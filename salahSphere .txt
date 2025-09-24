@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SalahSphere - The Salah Tracker</title>
+<!-- Tailwind CSS CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+body {
+font-family: 'Poppins', sans-serif;
+background-color: #f3f4f6;
+}
+.tab-content {
+display: none;
+}
+.tab-content.active {
+display: block;
+}
+.dot {
+width: 12px;
+height: 12px;
+border-radius: 50%;
+display: inline-block;
+margin-left: 8px;
+}
+.dot.green { background-color: #10B981; }
+.dot.yellow { background-color: #FBBF24; }
+.dot.red { background-color: #EF4444; }
+
+.heat-map-cell {
+width: 24px;
+height: 24px;
+border-radius: 4px;
+transition: background-color 0.3s ease;
+}
+.heat-map-cell.shade-0 { background-color: #FEE2E2; }
+.heat-map-cell.shade-1 { background-color: #D1FAE5; }
+.heat-map-cell.shade-2 { background-color: #A7F3D0; }
+.heat-map-cell.shade-3 { background-color: #6EE7B7; }
+.heat-map-cell.shade-4 { background-color: #34D399; }
+.heat-map-cell.shade-5 { background-color: #10B981; }
+
+#qibla-needle {
+transform-origin: 50% 50%;
+transition: transform 0.5s ease-out;
+}
+</style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+<!-- Loading Screen -->
+<div id="loading-screen" class="fixed inset-0 bg-white bg-opacity-75 flex items-center justify-center z-50">
+<div class="text-xl font-semibold text-gray-700">Loading...</div>
+</div>
+
+<!-- Main App Container -->
+<div id="app-container" class="hidden bg-white rounded-3xl shadow-2xl w-full max-w-3xl mx-4 p-8">
+<h1 class="text-4xl font-bold text-center text-teal-700 mb-2">SalahSphere</h1>
+<p class="text-sm text-gray-500 text-center mb-6">Track your Salah, strengthen your faith.</p>
+
+<!-- Navigation Tabs -->
+<div class="flex justify-around mb-8 border-b-2 border-gray-200">
+<button id="tab-daily" class="tab-button w-1/4 py-3 font-semibold text-center border-b-4 border-transparent text-gray-500 hover:text-teal-600 transition duration-300 active:text-teal-600 active:border-teal-600">
+Daily
+</button>
+<button id="tab-monthly" class="tab-button w-1/4 py-3 font-semibold text-center border-b-4 border-transparent text-gray-500 hover:text-teal-600 transition duration-300">
+Monthly
+</button>
+<button id="tab-yearly" class="tab-button w-1/4 py-3 font-semibold text-center border-b-4 border-transparent text-gray-500 hover:text-teal-600 transition duration-300">
+Yearly
+</button>
+<button id="tab-tools" class="tab-button w-1/4 py-3 font-semibold text-center border-b-4 border-transparent text-gray-500 hover:text-teal-600 transition duration-300">
+Tools
+</button>
+</div>
+
+<!-- Daily Record Section -->
+<div id="daily-section" class="tab-content active">
+<h2 class="text-2xl font-semibold text-center text-gray-800 mb-4">Today's Salah Record</h2>
+<div id="prayers-container" class="grid grid-cols-2 sm:grid-cols-3 gap-6 mb-8">
+<!-- Prayer blocks will be dynamically added here -->
+</div>
+<div class="mt-4 p-6 bg-red-50 rounded-xl shadow-inner border border-red-200">
+<h3 class="text-xl font-semibold text-red-700 mb-4 text-center">Qaza Salah</h3>
+<div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+<p class="text-lg font-bold text-red-800">Total Qaza Salah: <span id="qaza-count" class="text-2xl font-extrabold ml-2">0</span></p>
+<button id="add-qaza-btn" class="flex-1 w-full sm:w-auto px-6 py-3 bg-red-600 text-white rounded-full font-bold shadow-lg hover:bg-red-700 transition-transform hover:scale-105">
+Add Qaza Salah
+</button>
+</div>
+</div>
+</div>
+
+<!-- Monthly Record Section -->
+<div id="monthly-section" class="tab-content">
+<h2 class="text-2xl font-semibold text-center text-gray-800 mb-4">Monthly Record</h2>
+<div class="flex items-center justify-center mb-6">
+<button id="prev-month-btn" class="px-4 py-2 text-gray-600 hover:text-teal-600 font-bold">&lt;</button>
+<span id="current-month-year" class="text-xl font-bold text-teal-700 mx-4"></span>
+<button id="next-month-btn" class="px-4 py-2 text-gray-600 hover:text-teal-600 font-bold">&gt;</button>
+</div>
+<div class="flex justify-center mb-4 text-sm font-semibold text-gray-600">
+<p class="flex items-center mx-2"><span class="dot green"></span>All Salah Performed</p>
+<p class="flex items-center mx-2"><span class="dot yellow"></span>1-2 Missed</p>
+<p class="flex items-center mx-2"><span class="dot red"></span>3+ Missed</p>
+</div>
+<div id="monthly-calendar" class="grid grid-cols-7 gap-1 sm:gap-2 text-center text-sm">
+<!-- Calendar days will be dynamically added here -->
+</div>
+<div class="mt-6 p-4 bg-teal-50 rounded-lg shadow-inner text-center">
+<h3 class="text-lg font-semibold text-teal-800 mb-2">Monthly Progress</h3>
+<p class="text-2xl font-bold text-teal-600"><span id="monthly-progress-percentage">0</span>%</p>
+</div>
+</div>
+
+<!-- Yearly Record Section -->
+<div id="yearly-section" class="tab-content">
+<h2 class="text-2xl font-semibold text-center text-gray-800 mb-4">Yearly Progress (Heatmap)</h2>
+<div class="flex items-center justify-center mb-6">
+<button id="prev-year-btn" class="px-4 py-2 text-gray-600 hover:text-teal-600 font-bold">&lt;</button>
+<span id="current-year" class="text-xl font-bold text-teal-700 mx-4"></span>
+<button id="next-year-btn" class="px-4 py-2 text-gray-600 hover:text-teal-600 font-bold">&gt;</button>
+</div>
+<div id="yearly-heatmap" class="grid grid-cols-[repeat(53,minmax(0,1fr))] gap-1 md:gap-2 overflow-x-auto p-2">
+<!-- Heatmap cells will be dynamically added here -->
+</div>
+<div class="mt-6 p-4 bg-teal-50 rounded-lg shadow-inner text-center">
+<h3 class="text-lg font-semibold text-teal-800 mb-2">Annual Stats</h3>
+<p class="text-xl font-bold text-teal-600">Total Salah Performed: <span id="total-salah-count">0</span></p>
+<p class="text-xl font-bold text-red-600">Total Qaza Salah Added: <span id="total-qaza-count">0</span></p>
+</div>
+</div>
+
+<!-- Tools Section (Qibla & Calendar) -->
+<div id="tools-section" class="tab-content">
+<h2 class="text-2xl font-semibold text-center text-gray-800 mb-4">Islamic Tools</h2>
+
+<!-- Qibla Compass -->
+<div class="p-6 bg-white rounded-xl shadow-md mb-6">
+<h3 class="text-xl font-bold text-gray-800 mb-4 text-center">Qibla Compass</h3>
+<div class="flex flex-col items-center justify-center">
+<div class="relative w-48 h-48 bg-gray-200 rounded-full flex items-center justify-center">
+<div class="w-40 h-40 bg-white rounded-full border-4 border-teal-500 flex items-center justify-center">
+<img id="qibla-needle" src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Qibla_indicator.svg/200px-Qibla_indicator.svg.png" alt="Qibla Needle" class="w-24 transform-gpu">
+</div>
+<div class="absolute inset-0 flex items-center justify-center">
+<span class="absolute top-1 font-bold text-sm text-gray-700">N</span>
+<span class="absolute right-1 font-bold text-sm text-gray-700">E</span>
+<span class="absolute bottom-1 font-bold text-sm text-gray-700">S</span>
+<span class="absolute left-1 font-bold text-sm text-gray-700">W</span>
+</div>
+</div>
+<p id="qibla-status" class="mt-4 text-center text-lg text-gray-700 font-semibold">Calculating Qibla direction...</p>
+<p id="qibla-angle" class="mt-2 text-center text-xl font-bold text-teal-600"></p>
+</div>
+</div>
+
+<!-- Islamic Calendar -->
+<div class="p-6 bg-white rounded-xl shadow-md">
+<h3 class="text-xl font-bold text-gray-800 mb-4 text-center">Islamic Calendar</h3>
+<div class="text-center">
+<p class="text-sm text-gray-500 mb-1">Today's Date</p>
+<h4 id="gregorian-date" class="text-lg font-semibold text-gray-700 mb-2"></h4>
+<h4 id="hijri-date" class="text-3xl font-bold text-teal-600"></h4>
+</div>
+</div>
+</div>
+
+<!-- Download Button -->
+<div class="mt-8 text-center">
+<button id="download-btn" class="px-8 py-3 bg-teal-600 text-white rounded-full font-bold shadow-lg hover:bg-teal-700 transition-transform hover:scale-105">
+Export Salah Record
+</button>
+</div>
+</div>
+
+<!-- Firebase SDKs -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, onSnapshot, collection, getDocs, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+// Set Firebase debug log level
+setLogLevel('debug');
+
+const loadingScreen = document.getElementById('loading-screen');
+const appContainer = document.getElementById('app-container');
+
+const tabButtons = document.querySelectorAll('.tab-button');
+const tabContents = document.querySelectorAll('.tab-content');
+
+const dailySection = document.getElementById('daily-section');
+const monthlySection = document.getElementById('monthly-section');
+const yearlySection = document.getElementById('yearly-section');
+
+const prayersContainer = document.getElementById('prayers-container');
+const qazaCountSpan = document.getElementById('qaza-count');
+const addQazaBtn = document.getElementById('add-qaza-btn');
+
+const monthlyCalendarContainer = document.getElementById('monthly-calendar');
+const monthlyProgressPercentage = document.getElementById('monthly-progress-percentage');
+const yearlyHeatmapContainer = document.getElementById('yearly-heatmap');
+const totalSalahCountSpan = document.getElementById('total-salah-count');
+const totalQazaCountSpan = document.getElementById('total-qaza-count');
+
+const prevMonthBtn = document.getElementById('prev-month-btn');
+const nextMonthBtn = document.getElementById('next-month-btn');
+const currentMonthYearSpan = document.getElementById('current-month-year');
+const prevYearBtn = document.getElementById('prev-year-btn');
+const nextYearBtn = document.getElementById('next-year-btn');
+const currentYearSpan = document.getElementById('current-year');
+const downloadBtn = document.getElementById('download-btn');
+
+const qiblaNeedle = document.getElementById('qibla-needle');
+const qiblaStatus = document.getElementById('qibla-status');
+const qiblaAngleDisplay = document.getElementById('qibla-angle');
+
+const gregorianDateDisplay = document.getElementById('gregorian-date');
+const hijriDateDisplay = document.getElementById('hijri-date');
+
+// Firestore configuration and variables
+let app, auth, db, userId;
+const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
+const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+const prayerNames = ['Fajr', 'Zuhr', 'Asr', 'Maghrib', 'Isha'];
+const prayerCount = 5;
+let currentMonth = new Date().getMonth();
+let currentYear = new Date().getFullYear();
+let userLatitude = null;
+let userLongitude = null;
+
+const MECCA_LAT = 21.4225;
+const MECCA_LON = 39.8262;
+
+// Firebase Initialization and Auth
+const initFirebase = async () => {
+try {
+if (Object.keys(firebaseConfig).length === 0) {
+console.error("Firebase config is missing.");
+loadingScreen.style.display = 'none';
+return;
+}
+app = initializeApp(firebaseConfig);
+auth = getAuth(app);
+db = getFirestore(app);
+
+onAuthStateChanged(auth, async (user) => {
+if (user) {
+userId = user.uid;
+appContainer.classList.remove('hidden');
+loadingScreen.style.display = 'none';
+setupAppListeners();
+initQibla();
+initIslamicCalendar();
+} else {
+// User is signed out.
+if (initialAuthToken) {
+await signInWithCustomToken(auth, initialAuthToken);
+} else {
+await signInAnonymously(auth);
+}
+}
+});
+} catch (error) {
+console.error("Firebase initialization failed:", error);
+loadingScreen.style.display = 'none';
+}
+};
+
+const setupAppListeners = () => {
+if (!userId) {
+console.error("User ID not available.");
+return;
+}
+
+const today = new Date().toISOString().slice(0, 10);
+const dailyDocRef = doc(db, `artifacts/${appId}/users/${userId}/namaz_records`, today);
+
+// Real-time listener for daily prayer records
+onSnapshot(dailyDocRef, (docSnap) => {
+const data = docSnap.exists() ? docSnap.data() : {};
+updateDailyUI(data);
+});
+
+// Initial render for monthly and yearly views
+updateMonthlyUI(currentMonth, currentYear);
+updateYearlyUI(currentYear);
+};
+
+// Qibla Compass Logic
+const initQibla = () => {
+if (navigator.geolocation) {
+navigator.geolocation.getCurrentPosition(position => {
+userLatitude = position.coords.latitude;
+userLongitude = position.coords.longitude;
+qiblaStatus.textContent = "Qibla angle calculated. Point your device to North.";
+
+// Listen for device orientation changes
+if (window.DeviceOrientationEvent) {
+window.addEventListener('deviceorientation', e => {
+if (e.webkitCompassHeading) {
+// iOS
+const angle = calculateQiblaDirection(userLatitude, userLongitude, e.webkitCompassHeading);
+qiblaNeedle.style.transform = `rotate(${angle}deg)`;
+qiblaAngleDisplay.textContent = `${angle.toFixed(2)}°`;
+} else if (e.alpha !== null) {
+// Android
+const alpha = e.alpha || 0;
+const beta = e.beta || 0;
+const gamma = e.gamma || 0;
+const heading = getAndroidHeading(alpha, beta, gamma);
+const angle = calculateQiblaDirection(userLatitude, userLongitude, heading);
+qiblaNeedle.style.transform = `rotate(${angle}deg)`;
+qiblaAngleDisplay.textContent = `${angle.toFixed(2)}°`;
+}
+}, true);
+} else {
+qiblaStatus.textContent = "Device orientation not supported.";
+}
+}, error => {
+qiblaStatus.textContent = "Failed to get location. Please enable location services.";
+console.error("Geolocation error:", error);
+});
+} else {
+qiblaStatus.textContent = "Geolocation is not supported by this browser.";
+}
+};
+
+const calculateQiblaDirection = (lat, lon, heading) => {
+const rad = Math.PI / 180;
+const latRad = lat * rad;
+const lonRad = lon * rad;
+const meccaLatRad = MECCA_LAT * rad;
+const meccaLonRad = MECCA_LON * rad;
+
+const deltaLon = meccaLonRad - lonRad;
+const y = Math.sin(deltaLon);
+const x = Math.cos(latRad) * Math.tan(meccaLatRad) - Math.sin(latRad) * Math.cos(deltaLon);
+let qiblaDirection = Math.atan2(y, x) / rad;
+
+if (qiblaDirection < 0) {
+qiblaDirection += 360;
+}
+
+const finalAngle = qiblaDirection - heading;
+return finalAngle;
+};
+
+const getAndroidHeading = (alpha, beta, gamma) => {
+const alphaRad = alpha * Math.PI / 180;
+const betaRad = beta * Math.PI / 180;
+const gammaRad = gamma * Math.PI / 180;
+
+const R = [
+[Math.cos(alphaRad) * Math.cos(betaRad), Math.cos(alphaRad) * Math.sin(betaRad) * Math.sin(gammaRad) - Math.sin(alphaRad) * Math.cos(gammaRad), Math.cos(alphaRad) * Math.sin(betaRad) * Math.cos(gammaRad) + Math.sin(alphaRad) * Math.sin(gammaRad)],
+[Math.sin(alphaRad) * Math.cos(betaRad), Math.sin(alphaRad) * Math.sin(betaRad) * Math.sin(gammaRad) + Math.cos(alphaRad) * Math.cos(gammaRad), Math.sin(alphaRad) * Math.sin(betaRad) * Math.cos(gammaRad) - Math.cos(alphaRad) * Math.sin(gammaRad)],
+[-Math.sin(betaRad), Math.cos(betaRad) * Math.sin(gammaRad), Math.cos(betaRad) * Math.cos(gammaRad)]
+];
+
+let heading = Math.atan2(R[1][0], R[0][0]);
+heading = heading * 180 / Math.PI;
+if (heading < 0) {
+heading += 360;
+}
+return heading;
+};
+
+// Islamic Calendar Logic (Simplified)
+const initIslamicCalendar = () => {
+const today = new Date();
+gregorianDateDisplay.textContent = today.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+// Using a public API for Hijri Date to keep the code simple and accurate.
+fetch('http://api.aladhan.com/v1/gToH')
+.then(response => response.json())
+.then(data => {
+const hijri = data.data.hijri;
+const hijriDateString = `${hijri.day.en} ${hijri.month.en} ${hijri.year}`;
+hijriDateDisplay.textContent = hijriDateString;
+})
+.catch(error => {
+console.error("Failed to fetch Hijri date:", error);
+hijriDateDisplay.textContent = "Error loading Islamic date.";
+});
+};
+
+// UI Updates
+const updateDailyUI = (data) => {
+prayersContainer.innerHTML = '';
+prayerNames.forEach(prayer => {
+const isPerformed = data[prayer] ? true : false;
+const isJamaat = data[prayer]?.type === 'Jamaat';
+
+const prayerCard = document.createElement('div');
+prayerCard.className = `p-4 rounded-2xl shadow-md bg-white text-center transition-transform hover:scale-105 cursor-pointer border-2 ${isPerformed ? 'border-teal-500' : 'border-transparent'}`;
+prayerCard.innerHTML = `
+<h3 class="text-lg font-semibold text-gray-800">${prayer}</h3>
+<p class="text-sm text-gray-500 my-2">${isPerformed ? 'Performed' : 'Not Performed'}</p>
+<div class="flex justify-center gap-2">
+<button data-prayer="${prayer}" data-type="Jamaat" class="prayer-btn text-sm py-1 px-3 rounded-full font-bold ${isJamaat ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-700'}">
+Jamaat
+</button>
+<button data-prayer="${prayer}" data-type="Alone" class="prayer-btn text-sm py-1 px-3 rounded-full font-bold ${isPerformed && !isJamaat ? 'bg-teal-600 text-white' : 'bg-gray-200 text-gray-700'}">
+Alone
+</button>
+</div>
+`;
+prayersContainer.appendChild(prayerCard);
+});
+
+qazaCountSpan.textContent = data.qaza || 0;
+attachDailyEventListeners();
+};
+
+const attachDailyEventListeners = () => {
+document.querySelectorAll('.prayer-btn').forEach(button => {
+button.addEventListener('click', handlePrayerClick);
+});
+addQazaBtn.addEventListener('click', handleQazaClick);
+};
+
+const updateMonthlyUI = async (month, year) => {
+const monthsInEnglish = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+currentMonthYearSpan.textContent = `${monthsInEnglish[month]} ${year}`;
+monthlyCalendarContainer.innerHTML = '';
+
+const allData = await fetchAllRecords();
+const daysInMonth = new Date(year, month + 1, 0).getDate();
+let totalPrayersInMonth = 0;
+let expectedPrayersInMonth = daysInMonth * prayerCount;
+
+// Add day names row
+const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+dayNames.forEach(day => {
+const dayHeader = document.createElement('div');
+dayHeader.className = 'font-bold text-gray-700';
+dayHeader.textContent = day;
+monthlyCalendarContainer.appendChild(dayHeader);
+});
+
+// Add empty cells for spacing
+const firstDayOfMonth = new Date(year, month, 1).getDay();
+for (let i = 0; i < firstDayOfMonth; i++) {
+const emptyCell = document.createElement('div');
+monthlyCalendarContainer.appendChild(emptyCell);
+}
+
+for (let day = 1; day <= daysInMonth; day++) {
+const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+const dailyData = allData[date];
+let missedPrayers = 0;
+let performedCount = 0;
+
+if (dailyData) {
+prayerNames.forEach(p => {
+if (dailyData[p]) {
+performedCount++;
+}
+});
+missedPrayers = prayerCount - performedCount;
+totalPrayersInMonth += performedCount;
+} else {
+missedPrayers = prayerCount; // Assume all are missed if no data
+}
+
+let colorClass = 'bg-gray-200';
+if (performedCount === prayerCount) {
+colorClass = 'bg-green-500';
+} else if (missedPrayers >= 3) {
+colorClass = 'bg-red-500';
+} else if (missedPrayers >= 1) {
+colorClass = 'bg-yellow-500';
+}
+
+const dayCell = document.createElement('div');
+dayCell.className = `p-2 rounded-lg font-bold text-center text-white cursor-pointer transition-colors ${colorClass}`;
+dayCell.textContent = day;
+monthlyCalendarContainer.appendChild(dayCell);
+}
+
+const monthlyProgress = expectedPrayersInMonth > 0 ? ((totalPrayersInMonth / expectedPrayersInMonth) * 100).toFixed(0) : 0;
+monthlyProgressPercentage.textContent = monthlyProgress;
+};
+
+const updateYearlyUI = async (year) => {
+currentYearSpan.textContent = year;
+yearlyHeatmapContainer.innerHTML = '';
+
+const allData = await fetchAllRecords();
+const startDate = new Date(year, 0, 1);
+const endDate = new Date(year, 11, 31);
+let totalSalah = 0;
+let totalQaza = 0;
+
+for (let date = startDate; date <= endDate; date.setDate(date.getDate() + 1)) {
+const isoDate = date.toISOString().slice(0, 10);
+const dailyData = allData[isoDate];
+let performedCount = 0;
+
+if (dailyData) {
+prayerNames.forEach(p => {
+if (dailyData[p]) {
+performedCount++;
+}
+});
+totalSalah += performedCount;
+totalQaza += dailyData.qaza || 0;
+}
+
+const shade = Math.floor((performedCount / prayerCount) * 5);
+const cell = document.createElement('div');
+cell.className = `heat-map-cell shade-${shade} cursor-pointer`;
+cell.title = `${isoDate}: ${performedCount} out of ${prayerCount} Salah`;
+yearlyHeatmapContainer.appendChild(cell);
+}
+
+totalSalahCountSpan.textContent = totalSalah;
+totalQazaCountSpan.textContent = totalQaza;
+};
+
+// Data Fetching and Manipulation
+const fetchAllRecords = async () => {
+if (!userId || !db) return {};
+const recordsCollection = collection(db, `artifacts/${appId}/users/${userId}/namaz_records`);
+const recordsSnapshot = await getDocs(query(recordsCollection));
+const allData = {};
+recordsSnapshot.forEach(doc => {
+allData[doc.id] = doc.data();
+});
+return allData;
+};
+
+// Event Handlers
+const handlePrayerClick = async (event) => {
+const prayerName = event.target.dataset.prayer;
+const prayerType = event.target.dataset.type;
+const today = new Date().toISOString().slice(0, 10);
+const docRef = doc(db, `artifacts/${appId}/users/${userId}/namaz_records`, today);
+
+const docSnap = await getDoc(docRef);
+const currentData = docSnap.exists() ? docSnap.data() : {};
+
+await setDoc(docRef, { [prayerName]: { count: 1, type: prayerType } }, { merge: true });
+};
+
+const handleQazaClick = async () => {
+const today = new Date().toISOString().slice(0, 10);
+const docRef = doc(db, `artifacts/${appId}/users/${userId}/namaz_records`, today);
+
+const docSnap = await getDoc(docRef);
+const currentData = docSnap.exists() ? docSnap.data() : {};
+const newQazaCount = (currentData.qaza || 0) + 1;
+
+await setDoc(docRef, { qaza: newQazaCount }, { merge: true });
+};
+
+const handleDownload = async () => {
+const allData = await fetchAllRecords();
+const dataStr = JSON.stringify(allData, null, 2);
+const blob = new Blob([dataStr], { type: 'application/json' });
+const url = URL.createObjectURL(blob);
+const a = document.createElement('a');
+a.href = url;
+a.download = `salahsphere_salah_record_${userId}.json`;
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+URL.revokeObjectURL(url);
+};
+
+const switchTab = (tabName) => {
+tabContents.forEach(section => section.classList.remove('active'));
+document.getElementById(`${tabName}-section`).classList.add('active');
+tabButtons.forEach(btn => {
+btn.classList.remove('text-teal-600', 'border-teal-600');
+btn.classList.add('text-gray-500', 'border-transparent');
+});
+document.getElementById(`tab-${tabName}`).classList.add('text-teal-600', 'border-teal-600');
+
+if (tabName === 'monthly') {
+updateMonthlyUI(currentMonth, currentYear);
+} else if (tabName === 'yearly') {
+updateYearlyUI(currentYear);
+}
+};
+
+// Event listeners for tabs
+tabButtons.forEach(button => {
+button.addEventListener('click', () => {
+const tabName = button.id.replace('tab-', '');
+switchTab(tabName);
+});
+});
+
+prevMonthBtn.addEventListener('click', () => {
+if (currentMonth === 0) {
+currentMonth = 11;
+currentYear--;
+} else {
+currentMonth--;
+}
+updateMonthlyUI(currentMonth, currentYear);
+});
+
+nextMonthBtn.addEventListener('click', () => {
+if (currentMonth === 11) {
+currentMonth = 0;
+currentYear++;
+} else {
+currentMonth++;
+}
+updateMonthlyUI(currentMonth, currentYear);
+});
+
+prevYearBtn.addEventListener('click', () => {
+currentYear--;
+updateYearlyUI(currentYear);
+});
+
+nextYearBtn.addEventListener('click', () => {
+currentYear++;
+updateYearlyUI(currentYear);
+});
+
+downloadBtn.addEventListener('click', handleDownload);
+
+// Initial setup
+window.onload = () => {
+initFirebase();
+switchTab('daily'); // Start with the daily view
+};
+</script>
+</body>
+</html>
